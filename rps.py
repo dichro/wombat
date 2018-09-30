@@ -140,9 +140,15 @@ class RPSCmdSet(CmdSet):
 class RPSWeapon(Object):
 	"""Base typeclass for RPS weapons."""
 	
-	# TODO(miki): un-defend when dropping weapon
-
 	def at_object_creation(self):
 		self.cmdset.add_default(RPSCmdSet, permanent=True)
 		self.locks.add("call:holds(%i)" % self.id)
 		
+	def move_to(self, *args, **kwargs):
+		"""Unwields this weapon before dropping."""
+		wielder = self.location
+		ret = super(RPSWeapon, self).move_to(*args, **kwargs)
+		if ret and wielder:
+			# we've lost the object
+			wielder.ndb.defend = None
+		return ret
