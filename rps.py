@@ -1,5 +1,6 @@
 from evennia import CmdSet
 from evennia import Command
+from typeclasses.objects import Object
 
 
 # Each value in BEATS describes that the stances that the corresponding key beats.
@@ -26,6 +27,8 @@ BEATS = {
 		"rock": "vaporizes",
 	},
 }
+
+
 class CmdAttack(Command):
 	"""Attack with the weapon of choice."""
 	key = "attack"
@@ -45,9 +48,9 @@ class CmdRPS(Command):
 
 	def func(self):
 		self.msg("These are the rules of combat:")
-		for a, b in BEATS.items():
-			for d, v in b.items():
-				self.msg('  %s %s %s' % (a, v, d))
+		for attack, beats in BEATS.items():
+			for defeats, verb in beats.items():
+				self.msg('  %s %s %s' % (attack, verb, defeats))
 
 
 class RPSCmdSet(CmdSet):
@@ -57,3 +60,12 @@ class RPSCmdSet(CmdSet):
 	def at_cmdset_creation(self):
 		self.add(CmdAttack())
 		self.add(CmdRPS())
+
+
+class RPSWeapon(Object):
+	"""Base typeclass for RPS weapons."""
+	
+	def at_object_creation(self):
+		self.cmdset.add_default(RPSCmdSet, permanent=True)
+		self.locks.add("call:holds(%i)" % self.id)
+		
