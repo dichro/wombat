@@ -72,7 +72,22 @@ class CmdAttack(Command):
 			self.msg('%s is defenseless, you cad!' % target)
 			self.caller.location.msg_contents('%s waves their weapon at %s threateningly' % (self.caller, target), exclude=self.caller)
 			return
-		self.msg("We're attacking %s" % target)
+
+		# OK, now we're actually attacking
+		for attack in attacks:
+			defense = target.ndb.defend[0]
+			if defense in BEATS[attack]:
+				# attacker wins
+				self.caller.location.msg_contents("%s's %s %s %s's %s!" % (self.caller, attack, BEATS[attack][defense], target, defense))
+				return
+			elif attack in BEATS[defense]:
+				# defender wins
+				# TODO(dichro): make the verb passive? I need a grammar engine.
+				self.caller.location.msg_contents("%s's %s %s %s's %s!" % (target, defense, BEATS[defense][attack], self.caller, attack))
+				return
+			else:
+				# tie
+				self.caller.location.msg_contents('%s attacks %s but neither prevails!' % (self.caller, target))
 
 
 class CmdDefend(Command):
