@@ -12,6 +12,13 @@ robin is present, and
 robin has acquired a weapon, wielded it, and set a defensive stance
 
 Then combat will be decided by matching the attacker's attack stance against the defender's defensive stances according to the rules of RPS.
+The loser will be forced to drop their weapon.
+
+Things to fix:
+* all weapons add attack/defend to their holder's command sets. This makes commands awkward when carrying multiple weapons. Best
+fix may be to have a "wield" in default_commands, and only the wielded object activates its combat commands.
+* having multiple weapons named the same thing does the wrong thing with forced drops when losing combat
+* add armor! Armor gets dropped in preference to the wielded weapon.
 """
 
 from evennia import CmdSet
@@ -46,7 +53,11 @@ BEATS = {
 
 
 class CmdAttack(Command):
-	"""Attack with the weapon of choice."""
+	"""Attack with your weapon.
+
+	Examples:
+		attack Miki scissors              -- attack an object named Miki using the scissors stance
+	"""
 	key = "attack"
 
 	def func(self):
@@ -68,6 +79,10 @@ class CmdAttack(Command):
 		target = self.caller.search(args[0])
 		if not target:
 			return
+		if target == self.caller:
+			self.msg('Why would you do that?')
+			self.caller.location.msg_contents('%s fumbles with their weapon' % self.caller, exclude=self.caller)
+			return
 		if not target.ndb.defend:
 			self.msg('%s is defenseless, you cad!' % target)
 			self.caller.location.msg_contents('%s waves their weapon at %s threateningly' % (self.caller, target), exclude=self.caller)
@@ -76,14 +91,19 @@ class CmdAttack(Command):
 		# OK, now we're actually attacking
 		for attack in attacks:
 			defense = target.ndb.defend[0]
+			if len(target.ndb.defend) > 1:
+				# rotate defensive stances for the next attack
+				target.ndb.defend = target.ndb.defend[1:] + target.ndb.defend[0:0]
 			if defense in BEATS[attack]:
 				# attacker wins
 				self.caller.location.msg_contents("%s's %s %s %s's %s!" % (self.caller, attack, BEATS[attack][defense], target, defense))
+				target.execute_cmd('drop 1-%s' % target.ndb.weapon)
 				return
 			elif attack in BEATS[defense]:
 				# defender wins
 				# TODO(dichro): make the verb passive? I need a grammar engine.
 				self.caller.location.msg_contents("%s's %s %s %s's %s!" % (target, defense, BEATS[defense][attack], self.caller, attack))
+				self.caller.execute_cmd('drop 1-%s' % self.caller.ndb.weapon)
 				return
 			else:
 				# tie
@@ -91,14 +111,20 @@ class CmdAttack(Command):
 
 
 class CmdDefend(Command):
-	"""Selects a defensive stance for combat."""
+	"""Selects a defensive stance for combat.
+	
+	Examples:
+		defend         -- shows current stance
+		defend Spock   -- sets a defensive stance of "Spock"
+		defend none    -- stop defending
+	"""
 	key = "defend"
 	aliases = ["block"]
 
 	def func(self):
 		stances = self.args.strip().split()
 		if len(stances) == 1 and stances[0] == "none":
-			self.caller.ndb.defend = None
+			del self.caller.ndb.defend
 			stances = None # fallthrough to the next block for caller feedback
 		if not stances:
 			if self.caller.ndb.defend:
@@ -111,8 +137,9 @@ class CmdDefend(Command):
 			self.msg("Usage: defend <stance> [<stance>...]\nTry 'combat' for more information")
 			return
 		self.caller.ndb.defend = stances
+		self.caller.ndb.weapon = self.obj
+		self.caller.location.msg_contents('%s waves their %s around threateningly' % (self.caller, self.obj), exclude=self.caller)
 		self.msg('You adopt a defensive stance.')
-		self.caller.location.msg_contents('%s waves their weapon around threateningly' % self.caller, exclude=self.caller)
 
 
 class CmdRPS(Command):
@@ -148,7 +175,8 @@ class RPSWeapon(Object):
 		"""Unwields this weapon before dropping."""
 		wielder = self.location
 		ret = super(RPSWeapon, self).move_to(*args, **kwargs)
-		if ret and wielder:
+		if ret and wielder and wielder.ndb.weapon == self:
 			# we've lost the object
-			wielder.ndb.defend = None
+			del wielder.ndb.defend
+			del wielder.ndb.weapon
 		return ret
