@@ -61,3 +61,11 @@ class RPSNPC(Object):
 	def at_init(self):
 		self.ndb.weapon = "sword"
 		self.ndb.defend = ["Spock"]
+
+	def at_defeat(self, opponent):
+		"""Announces the defeat and marks the victor with an attribute."""
+
+		msg = 'The instructor says: "%s"' % (
+			self.db.defeat_cry or 'Lo, I am defeated!')
+		self.location.msg_contents(msg)
+		setattr(opponent.db, 'defeated_%s' % self.id, True)

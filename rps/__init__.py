@@ -100,8 +100,15 @@ class CmdAttack(Command):
 				target.ndb.defend = target.ndb.defend[1:] + target.ndb.defend[0:0]
 			if defense in BEATS[attack]:
 				# attacker wins
-				self.caller.location.msg_contents("%s's %s %s %s's %s!" % (self.caller, attack, BEATS[attack][defense], target, defense))
-				target.execute_cmd('drop 1-%s' % target.ndb.weapon)
+				self.caller.msg("Your %s %s %s's %s!" % (
+					attack, BEATS[attack][defense], target, defense))
+				self.caller.location.msg_contents("%s's %s %s %s's %s!" % (
+					self.caller, attack, BEATS[attack][defense], target, defense),
+					exclude=self.caller)
+				try:
+					target.at_defeat(self.caller)
+				except AttributeError, e:
+					target.execute_cmd('drop 1-%s' % target.ndb.weapon)
 				return
 			elif attack in BEATS[defense]:
 				# defender wins
