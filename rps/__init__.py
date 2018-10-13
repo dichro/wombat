@@ -38,8 +38,8 @@ BEATS = {
 		"Spock": "disproves",
 	},
 	"scissors": {
-		"paper": "cuts",
-		"lizard": "decapitates",
+		"paper": "cut",
+		"lizard": "decapitate",
 	},
 	"lizard": {
 		"paper": "eats",
@@ -55,15 +55,19 @@ BEATS = {
 class CmdAttack(Command):
 	"""Attack with your weapon.
 
+	Usage: attack <target> <stance>
+
 	Examples:
-		attack Miki scissors              -- attack an object named Miki using the scissors stance
+		attack Miki scissors              -- attack Miki using the scissors stance
+
+	Try typing "rules" to learn more about stances.
 	"""
 	key = "attack"
 
 	def func(self):
 		args = self.args.strip().split()
 		if len(args) < 2:
-			self.msg('Try "help attack"')
+			self.msg('Attack whom, and how? Try typing "help attack"')
 			self.caller.location.msg_contents('%s fumbles with their weapon' % self.caller, exclude=self.caller)
 			return
 		if not self.caller.ndb.defend:
@@ -112,11 +116,15 @@ class CmdAttack(Command):
 
 class CmdDefend(Command):
 	"""Selects a defensive stance for combat.
-	
+
+	Usage: defend <stance>
+
 	Examples:
 		defend         -- shows current stance
 		defend Spock   -- sets a defensive stance of "Spock"
 		defend none    -- stop defending
+
+	Try typing "rules" to learn more about stances.
 	"""
 	key = "defend"
 	aliases = ["block"]
@@ -166,11 +174,11 @@ class RPSCmdSet(CmdSet):
 
 class RPSWeapon(Object):
 	"""Base typeclass for RPS weapons."""
-	
+
 	def at_object_creation(self):
 		self.cmdset.add_default(RPSCmdSet, permanent=True)
 		self.locks.add("call:holds(%i)" % self.id)
-		
+
 	def move_to(self, *args, **kwargs):
 		"""Unwields this weapon before dropping."""
 		wielder = self.location
